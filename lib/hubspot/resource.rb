@@ -58,6 +58,8 @@ module Hubspot
 
       if id_or_properties.is_a?(Integer) || id_or_properties.nil?
         @id = id_or_properties
+      elsif id_or_properties.is_a?(String)
+        @id = id_or_properties
       elsif id_or_properties.is_a?(Hash)
         @id = id_or_properties.delete(id_field) || id_or_properties.delete(:id)
 
@@ -238,7 +240,7 @@ module Hubspot
       singleton_class.instance_eval do
         keys.each do |k|
           # Define a getter
-          define_method(k) { @changes[k.to_sym] || @properties.dig(k, "value") }
+          define_method(k) { @changes[k.to_sym] || @properties.dig(k) }
 
           # Define a setter
           define_method("#{k}=") do |v|

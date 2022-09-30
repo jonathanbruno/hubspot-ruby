@@ -1,33 +1,41 @@
 class Hubspot::Contact < Hubspot::Resource
-  self.id_field = "vid"
+  self.id_field = "id"
   self.update_method = "post"
 
-  ALL_PATH                = '/contacts/v1/lists/all/contacts/all'
-  CREATE_PATH             = '/contacts/v1/contact'
+  ALL_PATH                = '/crm/v3/objects/contacts'
+  CREATE_PATH             = '/crm/v3/objects/contacts'
   CREATE_OR_UPDATE_PATH   = '/contacts/v1/contact/createOrUpdate/email/:email'
   DELETE_PATH             = '/contacts/v1/contact/vid/:id'
-  FIND_PATH               = '/contacts/v1/contact/vid/:id/profile'
+  FIND_PATH               = '/crm/v3/objects/contacts/:id'
   FIND_BY_EMAIL_PATH      = '/contacts/v1/contact/email/:email/profile'
   FIND_BY_USER_TOKEN_PATH = '/contacts/v1/contact/utk/:token/profile'
   MERGE_PATH              = '/contacts/v1/contact/merge-vids/:id/'
-  SEARCH_PATH             = '/contacts/v1/search/query'
+  SEARCH_PATH             = '/crm/v3/objects/contacts/search'
   UPDATE_PATH             = '/contacts/v1/contact/vid/:id/profile'
 
   class << self
     def all(opts = {})
       Hubspot::PagedCollection.new(opts) do |options, offset, limit|
+        options.merge!("limit" => limit) if limit.present?
+        options.merge!("after" => offset) if offset.present?
+
         response = Hubspot::Connection.get_json(
           ALL_PATH,
-          options.merge("count" => limit, "vidOffset" => offset)
-          )
+          options
+        )
 
-        contacts = response["contacts"].map { |result| from_result(result) }
-        [contacts, response["vid-offset"], response["has-more"]]
+        contacts = response["results"].map { |result| from_result(result) }
+        [contacts, response.dig('paging','next','after'), response.dig('paging','next','link').present?]
       end
     end
 
     def find_by_email(email)
       response = Hubspot::Connection.get_json(FIND_BY_EMAIL_PATH, email: email)
+      from_result(response)
+    end
+
+    def find(id)
+      response = Hubspot::Connection.get_json(FIND_PATH, id: id)
       from_result(response)
     end
 
@@ -37,8 +45,13 @@ class Hubspot::Contact < Hubspot::Resource
     end
     alias_method :find_by_utk, :find_by_user_token
 
-    def create(email, properties = {})
-      super(properties.merge("email" => email))
+    def create(properties = {})
+      request = {
+        properties: properties
+      }
+      byebug
+      response = Hubspot::Connection.post_json(create_path, params: {}, body: request)
+      from_result(response)
     end
 
     def create_or_update(email, properties = {})
@@ -49,15 +62,50 @@ class Hubspot::Contact < Hubspot::Resource
       from_result(response)
     end
 
+    def search_by_email(email, opts = {})
+      page = Hubspot::PagedCollection.new(opts) do |options, offset, limit|
+        options.merge!("limit" => limit) if limit.present?
+        options.merge!("after" => offset) if offset.present?
+
+        response = Hubspot::Connection.post_json(
+          SEARCH_PATH,
+          options.merge(
+            params: {},
+            body: {
+              "filterGroups":[
+                {
+                  "filters": [
+                    {
+                      "propertyName": "email",
+                      "operator": "EQ",
+                      "value": email
+                    }
+                  ]
+                }
+              ]
+            }
+          )
+        )
+
+        contacts = response["results"].map { |result| from_result(result) }
+        contacts
+      end
+      page.resources
+    end
+
     def search(query, opts = {})
       Hubspot::PagedCollection.new(opts) do |options, offset, limit|
+        options.merge!("limit" => limit) if limit.present?
+        options.merge!("after" => offset) if offset.present?
+
+        byebug
         response = Hubspot::Connection.get_json(
           SEARCH_PATH,
-          options.merge(q: query, offset: offset, count: limit)
-          )
+          options.merge(q: query)
+        )
 
-        contacts = response["contacts"].map { |result| from_result(result) }
-        [contacts, response["offset"], response["has-more"]]
+        contacts = response["results"].map { |result| from_result(result) }
+        [contacts, response.dig('paging','next','after'), response.dig('paging','next','link').present?]
       end
     end
 

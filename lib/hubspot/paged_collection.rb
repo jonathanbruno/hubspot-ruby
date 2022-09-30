@@ -4,8 +4,8 @@ class Hubspot::PagedCollection < Hubspot::Collection
   def initialize(opts = {}, &block)
     @limit_param = opts.delete(:limit_param) || "limit"
     @limit = opts.delete(:limit) || 25
-    @offset_param = opts.delete(:offset_param) || "offset"
-    @offset = opts.delete(:offset)
+    @offset_param = opts.delete(:offset_param) || "after"
+    @offset = opts.delete(:after)
 
     super(opts, &block)
   end
