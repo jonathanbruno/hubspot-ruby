@@ -49,7 +49,6 @@ class Hubspot::Contact < Hubspot::Resource
       request = {
         properties: properties
       }
-      byebug
       response = Hubspot::Connection.post_json(create_path, params: {}, body: request)
       from_result(response)
     end
@@ -98,7 +97,6 @@ class Hubspot::Contact < Hubspot::Resource
         options.merge!("limit" => limit) if limit.present?
         options.merge!("after" => offset) if offset.present?
 
-        byebug
         response = Hubspot::Connection.get_json(
           SEARCH_PATH,
           options.merge(q: query)
