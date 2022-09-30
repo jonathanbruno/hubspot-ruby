@@ -11,7 +11,7 @@ class Hubspot::Contact < Hubspot::Resource
   FIND_BY_USER_TOKEN_PATH = '/contacts/v1/contact/utk/:token/profile'
   MERGE_PATH              = '/contacts/v1/contact/merge-vids/:id/'
   SEARCH_PATH             = '/crm/v3/objects/contacts/search'
-  UPDATE_PATH             = '/contacts/v1/contact/vid/:id/profile'
+  UPDATE_PATH             = '/crm/v3/objects/contacts/:id'
 
   class << self
     def all(opts = {})
@@ -50,6 +50,14 @@ class Hubspot::Contact < Hubspot::Resource
         properties: properties
       }
       response = Hubspot::Connection.post_json(create_path, params: {}, body: request)
+      from_result(response)
+    end
+
+    def update(id, properties = {})
+      request = {
+        properties: properties
+      }
+      response = Hubspot::Connection.patch_json(update_path, params: { id: id, no_parse: true }, body: request)
       from_result(response)
     end
 
